@@ -1,0 +1,8 @@
+# Secrets
+gcp-key.json
+.env
+
+# Environment
+venv/
+.vscode/
+.DS_Store
