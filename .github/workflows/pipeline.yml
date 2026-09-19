@@ -35,6 +35,11 @@ jobs:
         env:
           GCP_PROJECT_ID: sg-development-analytics
         run: python transformations/run_transformation.py staging/stg_hdb_resale.sql
+        
+      - name: Run mart transformation
+        env:
+          GCP_PROJECT_ID: sg-development-analytics
+        run: python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
 
       - name: Clean up credentials
         if: always()
