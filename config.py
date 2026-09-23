@@ -18,3 +18,6 @@ def get_client():
     """Return an authenticated BigQuery client."""
     credentials = service_account.Credentials.from_service_account_file(KEY_PATH)
     return bigquery.Client(project=PROJECT_ID, credentials=credentials)
+
+ONEMAP_EMAIL    = os.getenv("ONEMAP_EMAIL")
+ONEMAP_PASSWORD = os.getenv("ONEMAP_PASSWORD")
