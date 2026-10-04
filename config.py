@@ -21,3 +21,4 @@ def get_client():
 
 ONEMAP_EMAIL    = os.getenv("ONEMAP_EMAIL")
 ONEMAP_PASSWORD = os.getenv("ONEMAP_PASSWORD")
+LTA_ACCOUNT_KEY = os.getenv("LTA_ACCOUNT_KEY")
