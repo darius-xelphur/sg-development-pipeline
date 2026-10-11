@@ -12,11 +12,10 @@
 -- Distances are straight-line (ST_DISTANCE on WGS84), not walking distance.
 -- Real walking distance is longer and depends on the path network.
 --
--- Two MRT distances are computed:
---   nearest_mrt_m       — to any station, ignoring when it opened
---   nearest_mrt_2019_m  — to stations open before the TEL launch (Jan 2020)
--- Transactions before 2020 should use the second, or they credit a station
--- that did not yet exist.
+-- MRT columns here describe the CURRENT network, every station regardless of
+-- opening date, which suits maps and present-day questions. Transaction-level
+-- MRT access is computed as of each sale's month in the transaction mart, so
+-- a sale is never credited with a station that did not yet exist.
 --
 -- Primary and secondary schools are kept separate: the 1km and 2km primary
 -- bands are MOE ballot priority thresholds, a real mechanism affecting where
@@ -30,7 +29,7 @@ CREATE OR REPLACE TABLE `${project}.mart.woodlands_bus_accessibility` AS
 
 WITH addresses AS (
   SELECT
-    address, block, street_name, latitude, longitude,
+    address, block, street_name, postal_code, latitude, longitude,
     ST_GEOGPOINT(longitude, latitude) AS geo
   FROM `${project}.raw.address_geocodes`
   WHERE status = 'OK'
@@ -46,7 +45,7 @@ stops AS (
 
 stations AS (
   SELECT
-    station_name, station_codes, is_interchange, first_opened,
+    station_name, station_codes, is_interchange,
     ST_GEOGPOINT(longitude, latitude) AS geo
   FROM `${project}.mart.mrt_stations`
 ),
@@ -74,7 +73,6 @@ mrt_pairs AS (
     a.address,
     st.station_name,
     st.is_interchange,
-    st.first_opened,
     ST_DISTANCE(a.geo, st.geo) AS metres
   FROM addresses a
   JOIN stations st ON ST_DWITHIN(a.geo, st.geo, 3000)
@@ -111,10 +109,7 @@ mrt_agg AS (
     ARRAY_AGG(station_name ORDER BY metres LIMIT 1)[OFFSET(0)] AS nearest_mrt_name,
     ARRAY_AGG(is_interchange ORDER BY metres LIMIT 1)[OFFSET(0)] AS nearest_mrt_is_interchange,
     COUNTIF(metres <= 800)  AS mrt_within_800m,
-    COUNTIF(metres <= 1500) AS mrt_within_1500m,
-
-    -- Pre-TEL view: only stations open before 2020-01-31
-    ROUND(MIN(IF(first_opened < '2020-01-31', metres, NULL)), 1) AS nearest_mrt_2019_m
+    COUNTIF(metres <= 1500) AS mrt_within_1500m
   FROM mrt_pairs
   GROUP BY address
 ),
@@ -136,7 +131,7 @@ school_agg AS (
 )
 
 SELECT
-  a.address, a.block, a.street_name, a.latitude, a.longitude,
+  a.address, a.block, a.street_name, a.postal_code, a.latitude, a.longitude,
 
   b.nearest_stop_m,
   b.nearest_stop_name,
@@ -149,7 +144,6 @@ SELECT
   m.nearest_mrt_is_interchange,
   m.mrt_within_800m,
   m.mrt_within_1500m,
-  m.nearest_mrt_2019_m,
 
   sc.nearest_primary_m,
   sc.nearest_primary_name,
