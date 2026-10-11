@@ -27,7 +27,7 @@ from config import get_client, PROJECT_ID
 from ingestion.onemap.client import get_token, search
 
 ROOT       = Path(__file__).resolve().parents[2]
-SEED       = ROOT / "seeds" / "mrt_stations_north.csv"
+SEED       = ROOT / "seeds" / "mrt_stations.csv"
 TARGET     = f"{PROJECT_ID}.raw.mrt_stations"
 
 client = get_client()

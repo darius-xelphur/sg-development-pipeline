@@ -85,7 +85,7 @@ is almost never necessary.
 | [LTA DataMall](https://datamall.lta.gov.sg) | Bus stop locations | AccountKey | Ad hoc |
 | [OneMap](https://www.onemap.gov.sg/apidocs/) | Address geocoding | Email + password | N/A (lookup service) |
 | [data.gov.sg](https://data.gov.sg) | MOE school directory | None | Annual |
-| `seeds/mrt_stations_north.csv` | MRT stations | — | Manual |
+| `seeds/mrt_stations.csv` | MRT stations | — | Manual |
 
 All government data is used under the
 [Singapore Open Data Licence](https://data.gov.sg/open-data-licence).
@@ -377,7 +377,7 @@ ordering of commands in a YAML file. dbt or an orchestrator would make the
 dependency graph explicit and testable.
 
 **MRT coverage is a handful of northern stations.** The seed
-(`seeds/mrt_stations_north.csv`) lists only Woodlands, Marsiling, Admiralty,
+(`seeds/mrt_stations.csv`) lists only Woodlands, Marsiling, Admiralty,
 Sembawang and the three northern TEL stations; even Yishun and Canberra are
 missing. Transactions are now island-wide, so for most towns the MRT columns
 are NULL (no seeded station within 3km), and some northern blocks are matched
@@ -409,7 +409,7 @@ sg-development-pipeline/
 │       ├── mart_sg_accessibility.sql
 │       └── mart_hdb_resale.sql
 ├── seeds/
-│   └── mrt_stations_north.csv        Version-controlled reference data
+│   └── mrt_stations.csv        Version-controlled reference data
 ├── config.py                         Shared credentials and BigQuery client
 ├── test_connection.py
 ├── requirements.txt
