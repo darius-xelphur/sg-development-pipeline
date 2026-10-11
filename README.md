@@ -59,7 +59,7 @@ is almost never necessary.
 | `hdb_resale_transactions` | ~240,000 | data.gov.sg, all towns, Jan 2017 onwards |
 | `lta_bus_stops` | ~5,000 | LTA DataMall, island-wide |
 | `address_geocodes` | ~9,000 | OneMap, HDB blocks island-wide |
-| `mrt_stations` | 7 | Seed file + OneMap geocoding |
+| `mrt_stations` | ~170 | Seed file + OneMap geocoding, one row per line-station code |
 | `schools` | 337 | MOE directory, island-wide |
 | `school_geocodes` | 337 | OneMap, by postal code |
 
@@ -94,12 +94,13 @@ All government data is used under the
 
 There is no clean public API for MRT station coordinates. LTA publishes train
 station geometry as a shapefile, and OneMap's Themes API appears to require
-elevated permissions. For a handful of stations, a version-controlled CSV enriched
-with OneMap geocoding at load time is simpler and more transparent than
-either alternative.
+elevated permissions. A version-controlled CSV of every MRT line-station code,
+enriched with OneMap geocoding at load time, is simpler and more transparent
+than either alternative.
 
 The seed carries each line's opening date, which matters analytically — see
-*Design decisions* below.
+*Design decisions* below. Planned stations can stay in the seed with
+`opened = TBA`; they are skipped at load until given a real date.
 
 ---
 
@@ -376,13 +377,10 @@ rather than reach the marts.
 ordering of commands in a YAML file. dbt or an orchestrator would make the
 dependency graph explicit and testable.
 
-**MRT coverage is a handful of northern stations.** The seed
-(`seeds/mrt_stations.csv`) lists only Woodlands, Marsiling, Admiralty,
-Sembawang and the three northern TEL stations; even Yishun and Canberra are
-missing. Transactions are now island-wide, so for most towns the MRT columns
-are NULL (no seeded station within 3km), and some northern blocks are matched
-to a farther station than their real nearest one. Extend the seed before
-reading any MRT result.
+**MRT only, no LRT.** The seed covers the six MRT lines but not the Bukit
+Panjang, Sengkang or Punggol LRT. In those towns the LRT is the main feeder,
+so a block beside an LRT stop can still show a long `nearest_mrt_m`. Rail
+access there is understated.
 
 ---
 
@@ -426,7 +424,7 @@ sg-development-pipeline/
   this and it is the most interesting question available
 - Data quality tests
 - Migrate transformations to dbt
-- Extend the MRT seed to the full network
+- Add LRT stations to the seed, flagged by line type
 
 ---
 
