@@ -25,29 +25,36 @@ jobs:
       - name: Write GCP credentials
         run: echo '${{ secrets.GCP_SA_KEY }}' > gcp-key.json
 
-      - name: Run HDB ingestion
+      - name: Ingest HDB resale data
         env:
+          GCP_PROJECT_ID: sg-development-analytics
           DATA_GOV_API_KEY: ${{ secrets.DATA_GOV_API_KEY }}
-          GCP_PROJECT_ID: sg-development-analytics
         run: python ingestion/hdb/extract_resale.py
-
-      - name: Run staging transformation
-        env:
-          GCP_PROJECT_ID: sg-development-analytics
-        run: python transformations/run_transformation.py staging/stg_hdb_resale.sql
-        
-      - name: Run mart transformation
-        env:
-          GCP_PROJECT_ID: sg-development-analytics
-        run: |
-          python transformations/run_transformation.py mart/mart_woodlands_bus_accessibility.sql
-          python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
 
       - name: Ingest LTA bus stops
         env:
           GCP_PROJECT_ID: sg-development-analytics
           LTA_ACCOUNT_KEY: ${{ secrets.LTA_ACCOUNT_KEY }}
         run: python ingestion/lta/extract_bus_stops.py
+
+      - name: Run staging transformation
+        env:
+          GCP_PROJECT_ID: sg-development-analytics
+        run: python transformations/run_transformation.py staging/stg_hdb_resale.sql
+
+      - name: Geocode addresses
+        env:
+          GCP_PROJECT_ID: sg-development-analytics
+          ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
+          ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
+        run: python ingestion/onemap/geocode_addresses.py
+
+      - name: Run mart transformations
+        env:
+          GCP_PROJECT_ID: sg-development-analytics
+        run: |
+          python transformations/run_transformation.py mart/mart_woodlands_bus_accessibility.sql
+          python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
 
       - name: Clean up credentials
         if: always()
