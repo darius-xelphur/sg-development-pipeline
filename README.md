@@ -59,7 +59,7 @@ is almost never necessary.
 | `hdb_resale_transactions` | ~240,000 | data.gov.sg, all towns, Jan 2017 onwards |
 | `lta_bus_stops` | ~5,000 | LTA DataMall, island-wide |
 | `address_geocodes` | ~9,000 | OneMap, HDB blocks island-wide |
-| `mrt_stations` | ~170 | Seed file + OneMap geocoding, one row per line-station code |
+| `mrt_stations` | ~210 | Seed file + OneMap geocoding, one row per MRT/LRT line-station code |
 | `schools` | 337 | MOE directory, island-wide |
 | `school_geocodes` | 337 | OneMap, by postal code |
 
@@ -71,9 +71,9 @@ is almost never necessary.
 **mart**
 | Table | Grain | Notes |
 |---|---|---|
-| `mrt_stations` | One physical station | Interchanges collapsed |
-| `sg_accessibility` | One address | Bus, MRT (current network) and school distances |
-| `hdb_resale` | One transaction | The analysis table: all towns, with `region` and point-in-time MRT access |
+| `mrt_stations` | One physical station per mode (MRT/LRT) | Interchanges collapsed |
+| `sg_accessibility` | One address | Bus, MRT, LRT (current network) and school distances |
+| `hdb_resale` | One transaction | The analysis table: all towns, with `region` and point-in-time MRT and LRT access |
 
 ---
 
@@ -90,17 +90,21 @@ is almost never necessary.
 All government data is used under the
 [Singapore Open Data Licence](https://data.gov.sg/open-data-licence).
 
-### Why MRT stations are a seed file
+### Why MRT and LRT stations are a seed file
 
-There is no clean public API for MRT station coordinates. LTA publishes train
+There is no clean public API for rail station coordinates. LTA publishes train
 station geometry as a shapefile, and OneMap's Themes API appears to require
-elevated permissions. A version-controlled CSV of every MRT line-station code,
-enriched with OneMap geocoding at load time, is simpler and more transparent
+elevated permissions. A version-controlled CSV of every MRT and LRT line-station
+code, enriched with OneMap geocoding at load time, is simpler and more transparent
 than either alternative.
 
 The seed carries each line's opening date, which matters analytically — see
 *Design decisions* below. Planned stations can stay in the seed with
-`opened = TBA`; they are skipped at load until given a real date.
+`opened = TBA`, and retired ones with a `closed` date. Both are skipped at load.
+
+Each row is tagged `MRT` or `LRT` from its line name. LRT rows are geocoded as
+`<NAME> LRT STATION`, falling back to the same-named MRT station, which is
+where every shared-name LRT stop sits.
 
 ---
 
@@ -273,11 +277,19 @@ would attribute a price effect to infrastructure that was not there. So
 `mart.hdb_resale` computes MRT access **as of each sale's month**: a station
 counts only if it had opened by the first day of that month, and it is an
 interchange only once two or more of its lines had opened. `nearest_mrt_m`,
-`nearest_mrt_name`, `nearest_mrt_is_interchange` and `mrt_within_800m` are all
-point-in-time.
+`nearest_mrt_name`, `nearest_mrt_is_interchange`, `mrt_within_800m`,
+`nearest_lrt_m` and `nearest_lrt_name` are all point-in-time.
 
-`mart.sg_accessibility` keeps MRT columns for the current network, for maps
-and present-day questions. Don't join those to historical sales.
+`mart.sg_accessibility` keeps MRT and LRT columns for the current network, for
+maps and present-day questions. Don't join those to historical sales.
+
+### MRT and LRT are measured separately
+
+The LRT is a feeder, not a trunk line, so it gets its own columns
+(`nearest_lrt_m`, `nearest_lrt_name`) rather than counting as the nearest
+"MRT". Where both share a name, such as Sengkang (NE16 + STC), they stay
+separate stations in `mart.mrt_stations`, so the LRT doesn't turn Sengkang or
+Punggol into an MRT interchange.
 
 ### Interchanges are collapsed at the mart layer, not in raw
 
@@ -377,10 +389,10 @@ rather than reach the marts.
 ordering of commands in a YAML file. dbt or an orchestrator would make the
 dependency graph explicit and testable.
 
-**MRT only, no LRT.** The seed covers the six MRT lines but not the Bukit
-Panjang, Sengkang or Punggol LRT. In those towns the LRT is the main feeder,
-so a block beside an LRT stop can still show a long `nearest_mrt_m`. Rail
-access there is understated.
+**Closed stations are dropped entirely.** A station with a `closed` date is
+skipped at load, so it is missing from history as well as the current
+network. Today that only affects Ten Mile Junction (BP14, closed January
+2019): Bukit Panjang LRT distances for 2017–2018 sales ignore it.
 
 ---
 
@@ -424,7 +436,6 @@ sg-development-pipeline/
   this and it is the most interesting question available
 - Data quality tests
 - Migrate transformations to dbt
-- Add LRT stations to the seed, flagged by line type
 
 ---
 
