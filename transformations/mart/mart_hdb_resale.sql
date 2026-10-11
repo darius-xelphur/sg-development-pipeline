@@ -32,14 +32,23 @@ WITH txns AS (
   WHERE s.valid = 1
 ),
 
+-- GEOGRAPHY can't be used in SELECT DISTINCT, so dedupe on the coordinates
+-- and build the point afterwards.
 address_months AS (
-  SELECT DISTINCT
-    t.address,
-    t.transaction_month,
-    ST_GEOGPOINT(b.longitude, b.latitude) AS geo
-  FROM txns t
-  JOIN `${project}.mart.sg_accessibility` b
-    ON t.address = b.address
+  SELECT
+    address,
+    transaction_month,
+    ST_GEOGPOINT(longitude, latitude) AS geo
+  FROM (
+    SELECT DISTINCT
+      t.address,
+      t.transaction_month,
+      b.longitude,
+      b.latitude
+    FROM txns t
+    JOIN `${project}.mart.sg_accessibility` b
+      ON t.address = b.address
+  )
 ),
 
 stations AS (
