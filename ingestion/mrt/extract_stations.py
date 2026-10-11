@@ -38,9 +38,9 @@ def geocode_station(name, token):
     Search '<name> MRT STATION' and take the first hit that is that station.
 
     Fuzzy search ranks exits, bus interchanges and similarly named stations
-    (Woodlands vs Woodlands South) alongside the real one, so the top hit
-    alone can't be trusted. Accept 'WOODLANDS MRT STATION' optionally
-    followed by a code suffix such as ' (NS9 / TE2)'.
+    (e.g. '<NAME> SOUTH') alongside the real one, so the top hit alone can't
+    be trusted. Accept '<NAME> MRT STATION' optionally followed by a code
+    suffix such as ' (NS9 / TE2)'.
     """
     wanted = re.compile(rf"^{re.escape(name.upper())} MRT STATION( \(.*\))?$")
     _, results = search(f"{name} MRT STATION", token)

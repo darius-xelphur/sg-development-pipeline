@@ -1,10 +1,10 @@
--- transformations/mart/mart_hdb_woodlands_town_monthly.sql
+-- transformations/mart/mart_hdb_resale.sql
 -- Purpose: Island-wide HDB resale fact table, enriched with OneMap coordinates,
 --          bus, MRT and school accessibility
 -- Source:  staging.hdb_resale_transactions (valid = 1)
---          mart.woodlands_bus_accessibility (location, bus, schools)
+--          mart.sg_accessibility (location, bus, schools)
 --          mart.mrt_stations + raw.mrt_stations (MRT as of sale date)
--- Target:  mart.hdb_woodlands_town_monthly
+-- Target:  mart.hdb_resale
 -- Pattern: full dump — CREATE OR REPLACE drops and rebuilds every run.
 -- Joins:   LEFT, so a transaction is never dropped for missing enrichment.
 -- Note:    storey_range kept as the published band — an earlier attempt to
@@ -13,15 +13,15 @@
 --
 -- MRT access is point-in-time. A station counts only if it had opened by the
 -- first day of the sale's month, and is an interchange only if two or more of
--- its lines had. So a 2018 sale near Woodlands North sees no TEL station, and
--- Woodlands is not an interchange for it. Bus stops and schools are taken as
+-- its lines had. So a 2018 sale sees no Thomson-East Coast Line station, and
+-- an NSL/TEL interchange counts as single-line for it. Bus stops and schools are taken as
 -- static from the accessibility mart.
 --
 -- region follows URA's five planning regions. The ELSE branch is Central:
 -- Bishan, Bukit Merah, Bukit Timah, Central Area, Geylang, Kallang/Whampoa,
 -- Marine Parade, Queenstown, Toa Payoh.
 
-CREATE OR REPLACE TABLE `${project}.mart.hdb_woodlands_town_monthly` AS
+CREATE OR REPLACE TABLE `${project}.mart.hdb_resale` AS
 
 WITH txns AS (
   SELECT
@@ -37,7 +37,7 @@ address_months AS (
     t.transaction_month,
     ST_GEOGPOINT(b.longitude, b.latitude) AS geo
   FROM txns t
-  JOIN `${project}.mart.woodlands_bus_accessibility` b
+  JOIN `${project}.mart.sg_accessibility` b
     ON t.address = b.address
 ),
 
@@ -137,7 +137,7 @@ SELECT
   CURRENT_DATETIME('Asia/Singapore')         AS _mart_built_at
 
 FROM txns s
-LEFT JOIN `${project}.mart.woodlands_bus_accessibility` b
+LEFT JOIN `${project}.mart.sg_accessibility` b
   ON s.address = b.address
 LEFT JOIN mrt_asof m
   ON s.address = m.address

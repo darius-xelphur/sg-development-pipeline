@@ -1,10 +1,10 @@
--- transformations/mart/mart_woodlands_accessibility.sql
--- Purpose: Accessibility per geocoded Woodlands address — bus, MRT, schools
+-- transformations/mart/mart_sg_accessibility.sql
+-- Purpose: Accessibility per geocoded HDB address — bus, MRT, schools
 -- Source:  raw.address_geocodes (status = 'OK')
 --          raw.lta_bus_stops
 --          mart.mrt_stations
 --          raw.schools + raw.school_geocodes
--- Target:  mart.woodlands_bus_accessibility
+-- Target:  mart.sg_accessibility
 -- Grain:   one row per address; addresses are static, so this is computed
 --          once and joined to transactions downstream.
 -- Pattern: full dump — CREATE OR REPLACE.
@@ -25,7 +25,7 @@
 -- secondary section, so they count as secondary. They are not counted as
 -- primary: mainlevel_code alone can't tell which of them have one.
 
-CREATE OR REPLACE TABLE `${project}.mart.woodlands_bus_accessibility` AS
+CREATE OR REPLACE TABLE `${project}.mart.sg_accessibility` AS
 
 WITH addresses AS (
   SELECT

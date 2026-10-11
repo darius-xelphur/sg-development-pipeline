@@ -72,8 +72,8 @@ is almost never necessary.
 | Table | Grain | Notes |
 |---|---|---|
 | `mrt_stations` | One physical station | Interchanges collapsed |
-| `woodlands_bus_accessibility` | One address | Bus, MRT and school distances |
-| `hdb_woodlands_town_monthly` | One transaction | The analysis table |
+| `sg_accessibility` | One address | Bus, MRT and school distances |
+| `hdb_resale` | One transaction | The analysis table |
 
 ---
 
@@ -185,8 +185,8 @@ python transformations/run_transformation.py staging/stg_hdb_resale.sql
 python ingestion/onemap/geocode_addresses.py
 
 python transformations/run_transformation.py mart/mart_mrt_stations.sql
-python transformations/run_transformation.py mart/mart_woodlands_bus_accessibility.sql
-python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
+python transformations/run_transformation.py mart/mart_sg_accessibility.sql
+python transformations/run_transformation.py mart/mart_hdb_resale.sql
 ```
 
 First run takes a few minutes; most of it is geocoding ~690 addresses.
@@ -320,7 +320,7 @@ SELECT
   COUNT(*)                                                AS txns,
   COUNT(DISTINCT address)                                 AS blocks,
   ROUND(APPROX_QUANTILES(price_per_sqm, 2)[OFFSET(1)], 0) AS median_psm
-FROM `<project>.mart.hdb_woodlands_town_monthly`
+FROM `<project>.mart.hdb_resale`
 WHERE nearest_mrt_m IS NOT NULL
   AND flat_type = '4 ROOM'
   AND transaction_date >= '2023-01-01'
@@ -364,8 +364,8 @@ rather than reach the marts.
 ordering of commands in a YAML file. dbt or an orchestrator would make the
 dependency graph explicit and testable.
 
-**One file name is now wrong.** `mart_woodlands_bus_accessibility.sql` covers
-bus, MRT and schools. It should be renamed `mart_woodlands_accessibility.sql`.
+**One file name is now wrong.** `mart_sg_accessibility.sql` covers
+bus, MRT and schools. It should be renamed `mart_sg_accessibility.sql`.
 
 ---
 
@@ -387,8 +387,8 @@ sg-development-pipeline/
 │   │   └── stg_hdb_resale.sql
 │   └── mart/
 │       ├── mart_mrt_stations.sql
-│       ├── mart_woodlands_bus_accessibility.sql
-│       └── mart_hdb_woodlands_town_monthly.sql
+│       ├── mart_sg_accessibility.sql
+│       └── mart_hdb_resale.sql
 ├── seeds/
 │   └── mrt_stations_north.csv        Version-controlled reference data
 ├── config.py                         Shared credentials and BigQuery client

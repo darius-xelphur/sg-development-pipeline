@@ -68,8 +68,8 @@ jobs:
           GCP_PROJECT_ID: sg-development-analytics
         run: |
           python transformations/run_transformation.py mart/mart_mrt_stations.sql
-          python transformations/run_transformation.py mart/mart_woodlands_bus_accessibility.sql
-          python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
+          python transformations/run_transformation.py mart/mart_sg_accessibility.sql
+          python transformations/run_transformation.py mart/mart_hdb_resale.sql
 
       - name: Clean up credentials
         if: always()
