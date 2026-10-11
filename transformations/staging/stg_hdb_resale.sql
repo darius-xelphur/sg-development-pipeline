@@ -6,7 +6,7 @@
 -- SCD:     Type 2 columns present for future incremental loading
 -- Time:    all audit timestamps in Singapore local time
 
-CREATE TABLE IF NOT EXISTS `sg-development-analytics.staging.hdb_resale_transactions` (
+CREATE TABLE IF NOT EXISTS `${project}.staging.hdb_resale_transactions` (
   surrogate_id         INT64     NOT NULL,
   transaction_month    DATE,
   town                 STRING,
@@ -25,9 +25,9 @@ CREATE TABLE IF NOT EXISTS `sg-development-analytics.staging.hdb_resale_transact
   valid                INT64     NOT NULL
 );
 
-TRUNCATE TABLE `sg-development-analytics.staging.hdb_resale_transactions`;
+TRUNCATE TABLE `${project}.staging.hdb_resale_transactions`;
 
-INSERT INTO `sg-development-analytics.staging.hdb_resale_transactions`
+INSERT INTO `${project}.staging.hdb_resale_transactions`
 SELECT
   ROW_NUMBER() OVER (
     ORDER BY month, town, flat_type, block, street_name
@@ -50,7 +50,7 @@ SELECT
   CURRENT_DATETIME('Asia/Singapore')       AS change_time,
   1                                        AS valid
 
-FROM `sg-development-analytics.raw.hdb_resale_transactions`
+FROM `${project}.raw.hdb_resale_transactions`
 WHERE
   resale_price   IS NOT NULL
   AND floor_area_sqm IS NOT NULL

@@ -22,13 +22,13 @@
 -- bands are MOE ballot priority thresholds, a real mechanism affecting where
 -- families want to live. Secondary allocation does not work that way.
 
-CREATE OR REPLACE TABLE `sg-development-analytics.mart.woodlands_bus_accessibility` AS
+CREATE OR REPLACE TABLE `${project}.mart.woodlands_bus_accessibility` AS
 
 WITH addresses AS (
   SELECT
     address, block, street_name, latitude, longitude,
     ST_GEOGPOINT(longitude, latitude) AS geo
-  FROM `sg-development-analytics.raw.address_geocodes`
+  FROM `${project}.raw.address_geocodes`
   WHERE status = 'OK'
 ),
 
@@ -36,7 +36,7 @@ stops AS (
   SELECT
     description AS stop_description,
     ST_GEOGPOINT(longitude, latitude) AS geo
-  FROM `sg-development-analytics.raw.lta_bus_stops`
+  FROM `${project}.raw.lta_bus_stops`
   WHERE latitude != 0 AND longitude != 0
 ),
 
@@ -44,7 +44,7 @@ stations AS (
   SELECT
     station_name, station_codes, is_interchange, first_opened,
     ST_GEOGPOINT(longitude, latitude) AS geo
-  FROM `sg-development-analytics.mart.mrt_stations`
+  FROM `${project}.mart.mrt_stations`
 ),
 
 schools AS (
@@ -52,8 +52,8 @@ schools AS (
     s.school_name,
     s.mainlevel_code,
     ST_GEOGPOINT(g.longitude, g.latitude) AS geo
-  FROM `sg-development-analytics.raw.schools` s
-  JOIN `sg-development-analytics.raw.school_geocodes` g
+  FROM `${project}.raw.schools` s
+  JOIN `${project}.raw.school_geocodes` g
     ON s.postal_code = g.postal_code
   WHERE g.status = 'OK'
 ),

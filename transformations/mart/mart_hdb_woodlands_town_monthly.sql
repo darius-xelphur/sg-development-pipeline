@@ -11,7 +11,7 @@
 --          estimate exact floor from price rank was dropped as 81% of rows
 --          defaulted to the bottom of their band.
 
-CREATE OR REPLACE TABLE `sg-development-analytics.mart.hdb_woodlands_town_monthly` AS
+CREATE OR REPLACE TABLE `${project}.mart.hdb_woodlands_town_monthly` AS
 
 SELECT
   s.transaction_month                        AS transaction_date,
@@ -60,11 +60,11 @@ SELECT
 
   CURRENT_DATETIME('Asia/Singapore')         AS _mart_built_at
 
-FROM `sg-development-analytics.staging.hdb_resale_transactions` s
-LEFT JOIN `sg-development-analytics.raw.address_geocodes` g
+FROM `${project}.staging.hdb_resale_transactions` s
+LEFT JOIN `${project}.raw.address_geocodes` g
   ON CONCAT(s.block, ' ', s.street_name) = g.address
  AND g.status = 'OK'
-LEFT JOIN `sg-development-analytics.mart.woodlands_bus_accessibility` b
+LEFT JOIN `${project}.mart.woodlands_bus_accessibility` b
   ON CONCAT(s.block, ' ', s.street_name) = b.address
 WHERE
   s.valid = 1

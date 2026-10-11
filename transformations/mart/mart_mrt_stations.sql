@@ -11,7 +11,7 @@
 -- The later TEL date is retained separately since 2020 changed the station's
 -- connectivity without changing its location.
 
-CREATE OR REPLACE TABLE `sg-development-analytics.mart.mrt_stations` AS
+CREATE OR REPLACE TABLE `${project}.mart.mrt_stations` AS
 
 SELECT
   station_name,
@@ -28,5 +28,5 @@ SELECT
 
   CURRENT_DATETIME('Asia/Singapore')            AS _mart_built_at
 
-FROM `sg-development-analytics.raw.mrt_stations`
+FROM `${project}.raw.mrt_stations`
 GROUP BY station_name;
