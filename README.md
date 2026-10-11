@@ -4,8 +4,8 @@ A data pipeline that combines Singapore HDB resale transactions with transport
 and school accessibility data, to examine whether proximity to amenities is
 reflected in property prices.
 
-Currently scoped to **Woodlands**, a mature north-region town with around
-17,000 resale transactions since 2017.
+Covers **all 26 HDB towns island-wide**, around 240,000 resale transactions
+since 2017, each tagged with its URA planning region.
 
 **Stack:** Python · BigQuery · GitHub Actions
 **Sources:** data.gov.sg · LTA DataMall · OneMap · MOE
@@ -25,9 +25,9 @@ MOE (schools)             ─┤
 MRT seed (version-controlled) ─┘
 ```
 
-The output is one row per resale transaction, carrying the flat's attributes
-plus its block's distance to the nearest bus stop, MRT station, primary school
-and secondary school.
+The output is one row per resale transaction, carrying the flat's attributes,
+its town and region, plus its block's distance to the nearest bus stop, MRT
+station (as of the sale date), primary school and secondary school.
 
 ---
 
@@ -58,8 +58,8 @@ is almost never necessary.
 |---|---|---|
 | `hdb_resale_transactions` | ~240,000 | data.gov.sg, all towns, Jan 2017 onwards |
 | `lta_bus_stops` | ~5,000 | LTA DataMall, island-wide |
-| `address_geocodes` | ~690 | OneMap, Woodlands HDB blocks |
-| `mrt_stations` | 8 | Seed file + OneMap geocoding |
+| `address_geocodes` | ~9,000 | OneMap, HDB blocks island-wide |
+| `mrt_stations` | 7 | Seed file + OneMap geocoding |
 | `schools` | 337 | MOE directory, island-wide |
 | `school_geocodes` | 337 | OneMap, by postal code |
 
@@ -72,8 +72,8 @@ is almost never necessary.
 | Table | Grain | Notes |
 |---|---|---|
 | `mrt_stations` | One physical station | Interchanges collapsed |
-| `sg_accessibility` | One address | Bus, MRT and school distances |
-| `hdb_resale` | One transaction | The analysis table |
+| `sg_accessibility` | One address | Bus, MRT (current network) and school distances |
+| `hdb_resale` | One transaction | The analysis table: all towns, with `region` and point-in-time MRT access |
 
 ---
 
@@ -94,7 +94,7 @@ All government data is used under the
 
 There is no clean public API for MRT station coordinates. LTA publishes train
 station geometry as a shapefile, and OneMap's Themes API appears to require
-elevated permissions. For eight stations, a version-controlled CSV enriched
+elevated permissions. For a handful of stations, a version-controlled CSV enriched
 with OneMap geocoding at load time is simpler and more transparent than
 either alternative.
 
@@ -189,8 +189,12 @@ python transformations/run_transformation.py mart/mart_sg_accessibility.sql
 python transformations/run_transformation.py mart/mart_hdb_resale.sql
 ```
 
-First run takes a few minutes; most of it is geocoding ~690 addresses.
-Subsequent runs skip geocoding entirely.
+First run takes the better part of an hour; almost all of it is geocoding
+~9,000 addresses island-wide. Subsequent runs skip geocoding entirely.
+
+SQL files refer to tables as `` `${project}.dataset.table` ``.
+`run_transformation.py` fills in `${project}` from `GCP_PROJECT_ID`, so
+ingestion and transformations always target the same project.
 
 ---
 
@@ -256,19 +260,23 @@ A block's distance to its bus stop is the same for a 2017 sale and a 2024
 sale. Computing it once per address and joining to transactions is both
 cheaper and conceptually correct.
 
+MRT is the exception, because the network changes over time — see below.
+
 ### MRT opening dates are tracked
 
 The Thomson-East Coast Line opened 31 January 2020. Woodlands North and
 Woodlands South did not exist before that.
 
 Measuring a 2018 transaction against a station that opened two years later
-would attribute a price effect to infrastructure that was not there. The mart
-therefore exposes two distances:
+would attribute a price effect to infrastructure that was not there. So
+`mart.hdb_resale` computes MRT access **as of each sale's month**: a station
+counts only if it had opened by the first day of that month, and it is an
+interchange only once two or more of its lines had opened. `nearest_mrt_m`,
+`nearest_mrt_name`, `nearest_mrt_is_interchange` and `mrt_within_800m` are all
+point-in-time.
 
-- `nearest_mrt_m` — to any station
-- `nearest_mrt_2019_m` — to stations open before the TEL launch
-
-Analysis of pre-2020 transactions should use the second.
+`mart.sg_accessibility` keeps MRT columns for the current network, for maps
+and present-day questions. Don't join those to historical sales.
 
 ### Interchanges are collapsed at the mart layer, not in raw
 
@@ -286,6 +294,12 @@ The 1km and 2km primary school bands are MOE ballot priority thresholds — a
 real mechanism affecting where families want to live, not an arbitrary
 distance. Secondary allocation does not work that way, so only distance and a
 2km count are kept.
+
+### Region follows URA's five planning regions
+
+`region` maps each HDB town to North, North-East, East, West or Central, using
+URA's planning regions. It gives a coarser location control than `town` when
+comparing across the island.
 
 ### Storey-level price estimation was attempted and dropped
 
@@ -311,6 +325,7 @@ question, and the answer is more useful than the column would have been.
 
 ```sql
 SELECT
+  region,
   CASE
     WHEN nearest_mrt_m <= 400  THEN 'a. Under 400m'
     WHEN nearest_mrt_m <= 800  THEN 'b. 400-800m'
@@ -324,12 +339,13 @@ FROM `<project>.mart.hdb_resale`
 WHERE nearest_mrt_m IS NOT NULL
   AND flat_type = '4 ROOM'
   AND transaction_date >= '2023-01-01'
-GROUP BY mrt_band
-ORDER BY mrt_band;
+GROUP BY region, mrt_band
+ORDER BY region, mrt_band;
 ```
 
-Flat type and date range are held constant so the comparison is not
-confounded by flat mix or market conditions.
+Flat type and date range are held constant, and results are split by region,
+so the comparison is not confounded by flat mix, market conditions or broad
+location.
 
 ### Caveats to state alongside any result
 
@@ -352,10 +368,6 @@ metres. A bus stop 150m away across a canal with no bridge is a 600m walk.
 OneMap's routing API could give true walking distance at the cost of one call
 per address-amenity pair.
 
-**Scope is one town.** `staging` holds all 240,000 transactions island-wide;
-the marts filter to Woodlands. Widening would require geocoding roughly 9,000
-addresses.
-
 **No data quality tests.** A bad upstream refresh would propagate silently.
 Row count bounds, null checks and range assertions should fail the pipeline
 rather than reach the marts.
@@ -364,8 +376,13 @@ rather than reach the marts.
 ordering of commands in a YAML file. dbt or an orchestrator would make the
 dependency graph explicit and testable.
 
-**One file name is now wrong.** `mart_sg_accessibility.sql` covers
-bus, MRT and schools. It should be renamed `mart_sg_accessibility.sql`.
+**MRT coverage is a handful of northern stations.** The seed
+(`seeds/mrt_stations_north.csv`) lists only Woodlands, Marsiling, Admiralty,
+Sembawang and the three northern TEL stations; even Yishun and Canberra are
+missing. Transactions are now island-wide, so for most towns the MRT columns
+are NULL (no seeded station within 3km), and some northern blocks are matched
+to a farther station than their real nearest one. Extend the seed before
+reading any MRT result.
 
 ---
 
@@ -380,7 +397,9 @@ sg-development-pipeline/
 │   ├── lta/extract_bus_stops.py      LTA DataMall bus stops
 │   ├── mrt/extract_stations.py       MRT seed + geocoding
 │   ├── moe/extract_schools.py        MOE schools + geocoding
-│   └── onemap/geocode_addresses.py   HDB address geocoding (cached)
+│   └── onemap/
+│       ├── client.py                 Shared OneMap auth + search
+│       └── geocode_addresses.py      HDB address geocoding (cached)
 ├── transformations/
 │   ├── run_transformation.py         Generic SQL runner
 │   ├── staging/
@@ -394,6 +413,7 @@ sg-development-pipeline/
 ├── config.py                         Shared credentials and BigQuery client
 ├── test_connection.py
 ├── requirements.txt
+├── LICENSE
 └── .env.example
 ```
 
@@ -406,11 +426,11 @@ sg-development-pipeline/
   this and it is the most interesting question available
 - Data quality tests
 - Migrate transformations to dbt
-- Widen scope beyond Woodlands
+- Extend the MRT seed to the full network
 
 ---
 
 ## Licence
 
-Code: MIT.
+Code: MIT — see [LICENSE](LICENSE).
 Data: [Singapore Open Data Licence](https://data.gov.sg/open-data-licence).
