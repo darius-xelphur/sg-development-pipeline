@@ -44,6 +44,11 @@ SELECT
   b.stops_within_200m,
   b.stops_within_400m,
   b.stops_within_800m,
+  b.nearest_mrt_m,
+  b.nearest_mrt_name,
+  b.nearest_mrt_is_interchange,
+  b.mrt_within_800m,
+  b.nearest_mrt_2019_m,
 
   CURRENT_DATETIME('Asia/Singapore')         AS _mart_built_at
 
