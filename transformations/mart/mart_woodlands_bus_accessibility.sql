@@ -1,8 +1,9 @@
 -- transformations/mart/mart_woodlands_accessibility.sql
--- Purpose: Transport accessibility per geocoded Woodlands address — bus + MRT
+-- Purpose: Accessibility per geocoded Woodlands address — bus, MRT, schools
 -- Source:  raw.address_geocodes (status = 'OK')
 --          raw.lta_bus_stops
 --          mart.mrt_stations
+--          raw.schools + raw.school_geocodes
 -- Target:  mart.woodlands_bus_accessibility
 -- Grain:   one row per address; addresses are static, so this is computed
 --          once and joined to transactions downstream.
@@ -16,6 +17,10 @@
 --   nearest_mrt_2019_m  — to stations open before the TEL launch (Jan 2020)
 -- Transactions before 2020 should use the second, or they credit a station
 -- that did not yet exist.
+--
+-- Primary and secondary schools are kept separate: the 1km and 2km primary
+-- bands are MOE ballot priority thresholds, a real mechanism affecting where
+-- families want to live. Secondary allocation does not work that way.
 
 CREATE OR REPLACE TABLE `sg-development-analytics.mart.woodlands_bus_accessibility` AS
 
@@ -42,6 +47,17 @@ stations AS (
   FROM `sg-development-analytics.mart.mrt_stations`
 ),
 
+schools AS (
+  SELECT
+    s.school_name,
+    s.mainlevel_code,
+    ST_GEOGPOINT(g.longitude, g.latitude) AS geo
+  FROM `sg-development-analytics.raw.schools` s
+  JOIN `sg-development-analytics.raw.school_geocodes` g
+    ON s.postal_code = g.postal_code
+  WHERE g.status = 'OK'
+),
+
 bus_pairs AS (
   SELECT a.address, s.stop_description, ST_DISTANCE(a.geo, s.geo) AS metres
   FROM addresses a
@@ -58,6 +74,16 @@ mrt_pairs AS (
     ST_DISTANCE(a.geo, st.geo) AS metres
   FROM addresses a
   JOIN stations st ON ST_DWITHIN(a.geo, st.geo, 3000)
+),
+
+school_pairs AS (
+  SELECT
+    a.address,
+    sc.school_name,
+    sc.mainlevel_code,
+    ST_DISTANCE(a.geo, sc.geo) AS metres
+  FROM addresses a
+  JOIN schools sc ON ST_DWITHIN(a.geo, sc.geo, 3000)
 ),
 
 bus_agg AS (
@@ -85,6 +111,22 @@ mrt_agg AS (
     ROUND(MIN(IF(first_opened < '2020-01-31', metres, NULL)), 1) AS nearest_mrt_2019_m
   FROM mrt_pairs
   GROUP BY address
+),
+
+school_agg AS (
+  SELECT
+    address,
+
+    ROUND(MIN(IF(mainlevel_code = 'PRIMARY', metres, NULL)), 1) AS nearest_primary_m,
+    ARRAY_AGG(IF(mainlevel_code = 'PRIMARY', school_name, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]          AS nearest_primary_name,
+    COUNTIF(mainlevel_code = 'PRIMARY' AND metres <= 1000)      AS primary_within_1km,
+    COUNTIF(mainlevel_code = 'PRIMARY' AND metres <= 2000)      AS primary_within_2km,
+
+    ROUND(MIN(IF(mainlevel_code LIKE 'SECONDARY%', metres, NULL)), 1) AS nearest_secondary_m,
+    COUNTIF(mainlevel_code LIKE 'SECONDARY%' AND metres <= 2000)      AS secondary_within_2km
+  FROM school_pairs
+  GROUP BY address
 )
 
 SELECT
@@ -103,8 +145,16 @@ SELECT
   m.mrt_within_1500m,
   m.nearest_mrt_2019_m,
 
+  sc.nearest_primary_m,
+  sc.nearest_primary_name,
+  sc.primary_within_1km,
+  sc.primary_within_2km,
+  sc.nearest_secondary_m,
+  sc.secondary_within_2km,
+
   CURRENT_DATETIME('Asia/Singapore') AS _mart_built_at
 
 FROM addresses a
-LEFT JOIN bus_agg b ON a.address = b.address
-LEFT JOIN mrt_agg m ON a.address = m.address;
+LEFT JOIN bus_agg    b  ON a.address = b.address
+LEFT JOIN mrt_agg    m  ON a.address = m.address
+LEFT JOIN school_agg sc ON a.address = sc.address;

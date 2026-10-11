@@ -44,6 +44,13 @@ jobs:
           ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
         run: python ingestion/mrt/extract_stations.py
 
+      - name: Ingest MOE schools
+        env:
+          GCP_PROJECT_ID: sg-development-analytics
+          ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
+          ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
+        run: python ingestion/moe/extract_schools.py
+
       - name: Run staging transformation
         env:
           GCP_PROJECT_ID: sg-development-analytics

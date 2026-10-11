@@ -50,6 +50,14 @@ SELECT
   b.mrt_within_800m,
   b.nearest_mrt_2019_m,
 
+  -- School accessibility (MOE)
+  b.nearest_primary_m,
+  b.nearest_primary_name,
+  b.primary_within_1km,
+  b.primary_within_2km,
+  b.nearest_secondary_m,
+  b.secondary_within_2km,
+
   CURRENT_DATETIME('Asia/Singapore')         AS _mart_built_at
 
 FROM `sg-development-analytics.staging.hdb_resale_transactions` s
