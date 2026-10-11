@@ -1,8 +1,175 @@
 station_name,line,station_code,opened
-Woodlands,North South Line,NS9,1996-02-10
+Pasir Ris,East-West Line,EW1,1989-12-16
+Tampines,East-West Line,EW2,1989-12-16
+Simei,East-West Line,EW3,1989-12-16
+Tanah Merah,East-West Line,EW4,1989-11-04
+Bedok,East-West Line,EW5,1989-11-04
+Kembangan,East-West Line,EW6,1989-11-04
+Eunos,East-West Line,EW7,1989-11-04
+Paya Lebar,East-West Line,EW8,1989-11-04
+Aljunied,East-West Line,EW9,1989-11-04
+Kallang,East-West Line,EW10,1989-11-04
+Lavender,East-West Line,EW11,1989-11-04
+Bugis,East-West Line,EW12,1989-11-04
+City Hall,East-West Line,EW13,1987-12-12
+Raffles Place,East-West Line,EW14,1987-12-12
+Tanjong Pagar,East-West Line,EW15,1987-12-12
+Outram Park,East-West Line,EW16,1987-12-12
+Tiong Bahru,East-West Line,EW17,1988-03-12
+Redhill,East-West Line,EW18,1988-03-12
+Queenstown,East-West Line,EW19,1988-03-12
+Commonwealth,East-West Line,EW20,1988-03-12
+Buona Vista,East-West Line,EW21,1988-03-12
+Dover,East-West Line,EW22,2001-10-18
+Clementi,East-West Line,EW23,1988-03-12
+Jurong East,East-West Line,EW24,1988-11-05
+Chinese Garden,East-West Line,EW25,1988-11-05
+Lakeside,East-West Line,EW26,1988-11-05
+Boon Lay,East-West Line,EW27,1990-07-06
+Pioneer,East-West Line,EW28,2009-02-28
+Joo Koon,East-West Line,EW29,2009-02-28
+Gul Circle,East-West Line,EW30,2017-06-18
+Tuas Crescent,East-West Line,EW31,2017-06-18
+Tuas West Road,East-West Line,EW32,2017-06-18
+Tuas Link,East-West Line,EW33,2017-06-18
+Expo,East-West Line,CG1,2001-01-10
+Changi Airport,East-West Line,CG2,2002-02-08
+HarbourFront,North East Line,NE1,2003-06-20
+Outram Park,North East Line,NE3,2003-06-20
+Chinatown,North East Line,NE4,2003-06-20
+Clarke Quay,North East Line,NE5,2003-06-20
+Dhoby Ghaut,North East Line,NE6,2003-06-20
+Little India,North East Line,NE7,2003-06-20
+Farrer Park,North East Line,NE8,2003-06-20
+Boon Keng,North East Line,NE9,2003-06-20
+Potong Pasir,North East Line,NE10,2003-06-20
+Woodleigh,North East Line,NE11,2011-06-20
+Serangoon,North East Line,NE12,2003-06-20
+Kovan,North East Line,NE13,2003-06-20
+Hougang,North East Line,NE14,2003-06-20
+Buangkok,North East Line,NE15,2006-01-15
+Sengkang,North East Line,NE16,2003-06-20
+Punggol,North East Line,NE17,2003-06-20
+Punggol Coast,North East Line,NE18,2024-12-10
+Dhoby Ghaut,Circle Line,CC1,2010-04-17
+Bras Basah,Circle Line,CC2,2010-04-17
+Esplanade,Circle Line,CC3,2010-04-17
+Promenade,Circle Line,CC4,2010-04-17
+Nicoll Highway,Circle Line,CC5,2010-04-17
+Stadium,Circle Line,CC6,2010-04-17
+Mountbatten,Circle Line,CC7,2010-04-17
+Dakota,Circle Line,CC8,2010-04-17
+Paya Lebar,Circle Line,CC9,2010-04-17
+MacPherson,Circle Line,CC10,2010-04-17
+Tai Seng,Circle Line,CC11,2010-04-17
+Bartley,Circle Line,CC12,2009-05-28
+Serangoon,Circle Line,CC13,2009-05-28
+Lorong Chuan,Circle Line,CC14,2009-05-28
+Bishan,Circle Line,CC15,2009-05-28
+Marymount,Circle Line,CC16,2009-05-28
+Caldecott,Circle Line,CC17,2011-10-08
+Bukit Brown,Circle Line,CC18,TBA
+Botanic Gardens,Circle Line,CC19,2011-10-08
+Farrer Road,Circle Line,CC20,2011-10-08
+Holland Village,Circle Line,CC21,2011-10-08
+Buona Vista,Circle Line,CC22,2011-10-08
+one-north,Circle Line,CC23,2011-10-08
+Kent Ridge,Circle Line,CC24,2011-10-08
+Haw Par Villa,Circle Line,CC25,2011-10-08
+Pasir Panjang,Circle Line,CC26,2011-10-08
+Labrador Park,Circle Line,CC27,2011-10-08
+Telok Blangah,Circle Line,CC28,2011-10-08
+HarbourFront,Circle Line,CC29,2011-10-08
+Bayfront,Circle Line,CE1,2012-01-14
+Marina Bay,Circle Line,CE2,2012-01-14
+Bukit Panjang,Downtown Line,DT1,2015-12-27
+Cashew,Downtown Line,DT2,2015-12-27
+Hillview,Downtown Line,DT3,2015-12-27
+Hume,Downtown Line,DT4,2025-02-28
+Beauty World,Downtown Line,DT5,2015-12-27
+King Albert Park,Downtown Line,DT6,2015-12-27
+Sixth Avenue,Downtown Line,DT7,2015-12-27
+Tan Kah Kee,Downtown Line,DT8,2015-12-27
+Botanic Gardens,Downtown Line,DT9,2015-12-27
+Stevens,Downtown Line,DT10,2015-12-27
+Newton,Downtown Line,DT11,2015-12-27
+Little India,Downtown Line,DT12,2015-12-27
+Rochor,Downtown Line,DT13,2015-12-27
+Bugis,Downtown Line,DT14,2013-12-22
+Promenade,Downtown Line,DT15,2013-12-22
+Bayfront,Downtown Line,DT16,2013-12-22
+Downtown,Downtown Line,DT17,2013-12-22
+Telok Ayer,Downtown Line,DT18,2013-12-22
+Chinatown,Downtown Line,DT19,2013-12-22
+Fort Canning,Downtown Line,DT20,2017-10-21
+Bencoolen,Downtown Line,DT21,2017-10-21
+Jalan Besar,Downtown Line,DT22,2017-10-21
+Bendemeer,Downtown Line,DT23,2017-10-21
+Geylang Bahru,Downtown Line,DT24,2017-10-21
+Mattar,Downtown Line,DT25,2017-10-21
+MacPherson,Downtown Line,DT26,2017-10-21
+Ubi,Downtown Line,DT27,2017-10-21
+Kaki Bukit,Downtown Line,DT28,2017-10-21
+Bedok North,Downtown Line,DT29,2017-10-21
+Bedok Reservoir,Downtown Line,DT30,2017-10-21
+Tampines West,Downtown Line,DT31,2017-10-21
+Tampines,Downtown Line,DT32,2017-10-21
+Tampines East,Downtown Line,DT33,2017-10-21
+Upper Changi,Downtown Line,DT34,2017-10-21
+Expo,Downtown Line,DT35,2017-10-21
+Jurong East,North South Line,NS1,1990-03-10
+Bukit Batok,North South Line,NS2,1990-03-10
+Bukit Gombak,North South Line,NS3,1990-03-10
+Choa Chu Kang,North South Line,NS4,1990-03-10
+Yew Tee,North South Line,NS5,1996-02-10
+Kranji,North South Line,NS7,1996-02-10
 Marsiling,North South Line,NS8,1996-02-10
+Woodlands,North South Line,NS9,1996-02-10
 Admiralty,North South Line,NS10,1996-02-10
 Sembawang,North South Line,NS11,1996-02-10
+Canberra,North South Line,NS12,2019-11-02
+Yishun,North South Line,NS13,1988-12-20
+Khatib,North South Line,NS14,1988-12-20
+Yio Chu Kang,North South Line,NS15,1987-11-07
+Ang Mo Kio,North South Line,NS16,1987-11-07
+Bishan,North South Line,NS17,1987-11-07
+Braddell,North South Line,NS18,1987-11-07
+Toa Payoh,North South Line,NS19,1987-11-07
+Novena,North South Line,NS20,1987-12-12
+Newton,North South Line,NS21,1987-12-12
+Orchard,North South Line,NS22,1987-12-12
+Somerset,North South Line,NS23,1987-12-12
+Dhoby Ghaut,North South Line,NS24,1987-12-12
+City Hall,North South Line,NS25,1987-12-12
+Raffles Place,North South Line,NS26,1987-12-12
+Marina Bay,North South Line,NS27,1989-11-04
+Marina South Pier,North South Line,NS28,2014-11-23
 Woodlands North,Thomson-East Coast Line,TE1,2020-01-31
 Woodlands,Thomson-East Coast Line,TE2,2020-01-31
 Woodlands South,Thomson-East Coast Line,TE3,2020-01-31
+Springleaf,Thomson-East Coast Line,TE4,2021-08-28
+Lentor,Thomson-East Coast Line,TE5,2021-08-28
+Mayflower,Thomson-East Coast Line,TE6,2021-08-28
+Bright Hill,Thomson-East Coast Line,TE7,2021-08-28
+Upper Thomson,Thomson-East Coast Line,TE8,2021-08-28
+Caldecott,Thomson-East Coast Line,TE9,2021-08-28
+Mount Pleasant,Thomson-East Coast Line,TE10,TBA
+Stevens,Thomson-East Coast Line,TE11,2022-11-13
+Napier,Thomson-East Coast Line,TE12,2022-11-13
+Orchard Boulevard,Thomson-East Coast Line,TE13,2022-11-13
+Orchard,Thomson-East Coast Line,TE14,2022-11-13
+Great World,Thomson-East Coast Line,TE15,2022-11-13
+Havelock,Thomson-East Coast Line,TE16,2022-11-13
+Outram Park,Thomson-East Coast Line,TE17,2022-11-13
+Maxwell,Thomson-East Coast Line,TE18,2022-11-13
+Shenton Way,Thomson-East Coast Line,TE19,2022-11-13
+Marina Bay,Thomson-East Coast Line,TE20,2022-11-13
+Marina South,Thomson-East Coast Line,TE21,TBA
+Gardens by the Bay,Thomson-East Coast Line,TE22,2022-11-13
+Tanjong Rhu,Thomson-East Coast Line,TE23,2024-06-23
+Katong Park,Thomson-East Coast Line,TE24,2024-06-23
+Tanjong Katong,Thomson-East Coast Line,TE25,2024-06-23
+Marine Parade,Thomson-East Coast Line,TE26,2024-06-23
+Marine Terrace,Thomson-East Coast Line,TE27,2024-06-23
+Siglap,Thomson-East Coast Line,TE28,2024-06-23
+Bayshore,Thomson-East Coast Line,TE29,2024-06-23
