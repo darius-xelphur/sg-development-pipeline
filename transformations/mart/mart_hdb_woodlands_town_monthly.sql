@@ -1,5 +1,5 @@
 -- transformations/mart/mart_hdb_woodlands_town_monthly.sql
--- Purpose: Woodlands HDB resale fact table, enriched with OneMap coordinates,
+-- Purpose: Island-wide HDB resale fact table, enriched with OneMap coordinates,
 --          bus, MRT and school accessibility
 -- Source:  staging.hdb_resale_transactions (valid = 1)
 --          mart.woodlands_bus_accessibility (location, bus, schools)
@@ -16,6 +16,10 @@
 -- its lines had. So a 2018 sale near Woodlands North sees no TEL station, and
 -- Woodlands is not an interchange for it. Bus stops and schools are taken as
 -- static from the accessibility mart.
+--
+-- region follows URA's five planning regions. The ELSE branch is Central:
+-- Bishan, Bukit Merah, Bukit Timah, Central Area, Geylang, Kallang/Whampoa,
+-- Marine Parade, Queenstown, Toa Payoh.
 
 CREATE OR REPLACE TABLE `${project}.mart.hdb_woodlands_town_monthly` AS
 
@@ -24,9 +28,7 @@ WITH txns AS (
     s.*,
     CONCAT(s.block, ' ', s.street_name) AS address
   FROM `${project}.staging.hdb_resale_transactions` s
-  WHERE
-    s.valid = 1
-    AND s.town = 'WOODLANDS'
+  WHERE s.valid = 1
 ),
 
 address_months AS (
@@ -77,6 +79,18 @@ mrt_asof AS (
 SELECT
   s.transaction_month                        AS transaction_date,
   s.town,
+  CASE
+    WHEN s.town IN ('SEMBAWANG', 'WOODLANDS', 'YISHUN')
+      THEN 'North'
+    WHEN s.town IN ('ANG MO KIO', 'HOUGANG', 'PUNGGOL', 'SENGKANG', 'SERANGOON')
+      THEN 'North-East'
+    WHEN s.town IN ('BEDOK', 'PASIR RIS', 'TAMPINES')
+      THEN 'East'
+    WHEN s.town IN ('BUKIT BATOK', 'BUKIT PANJANG', 'CHOA CHU KANG',
+                    'CLEMENTI', 'JURONG EAST', 'JURONG WEST')
+      THEN 'West'
+    ELSE 'Central'
+  END                                        AS region,
   s.flat_type,
   s.block,
   s.street_name,

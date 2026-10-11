@@ -1,5 +1,5 @@
 """
-Geocode distinct Woodlands HDB addresses via OneMap into raw.address_geocodes.
+Geocode distinct HDB resale addresses island-wide via OneMap into raw.address_geocodes.
 
 INCREMENTAL BY DESIGN — unlike the other loads in this pipeline, which are full
 dumps. Each address costs an external API call against a free government
@@ -50,7 +50,7 @@ def ensure_table():
 
 
 def addresses_to_geocode():
-    """Distinct Woodlands addresses not already cached."""
+    """Distinct resale addresses not already cached."""
     sql = f"""
         SELECT DISTINCT
           s.block,
@@ -60,7 +60,6 @@ def addresses_to_geocode():
         LEFT JOIN `{TARGET}` g
           ON CONCAT(s.block, ' ', s.street_name) = g.address
         WHERE s.valid = 1
-          AND s.town = 'WOODLANDS'
           AND g.address IS NULL
     """
     df = client.query(sql).to_dataframe(create_bqstorage_client=False)
@@ -99,7 +98,7 @@ def load(rows):
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("OneMap Address Geocoding — Woodlands")
+    print("OneMap Address Geocoding — Island-wide")
     print("=" * 55)
 
     ensure_table()
