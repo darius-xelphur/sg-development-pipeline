@@ -21,6 +21,10 @@
 -- Primary and secondary schools are kept separate: the 1km and 2km primary
 -- bands are MOE ballot priority thresholds, a real mechanism affecting where
 -- families want to live. Secondary allocation does not work that way.
+--
+-- 'MIXED LEVELS' schools (secondary + JC, or primary + secondary) all run a
+-- secondary section, so they count as secondary. They are not counted as
+-- primary: mainlevel_code alone can't tell which of them have one.
 
 CREATE OR REPLACE TABLE `${project}.mart.woodlands_bus_accessibility` AS
 
@@ -81,6 +85,8 @@ school_pairs AS (
     a.address,
     sc.school_name,
     sc.mainlevel_code,
+    sc.mainlevel_code LIKE 'SECONDARY%'
+      OR sc.mainlevel_code = 'MIXED LEVELS' AS is_secondary,
     ST_DISTANCE(a.geo, sc.geo) AS metres
   FROM addresses a
   JOIN schools sc ON ST_DWITHIN(a.geo, sc.geo, 3000)
@@ -123,8 +129,8 @@ school_agg AS (
     COUNTIF(mainlevel_code = 'PRIMARY' AND metres <= 1000)      AS primary_within_1km,
     COUNTIF(mainlevel_code = 'PRIMARY' AND metres <= 2000)      AS primary_within_2km,
 
-    ROUND(MIN(IF(mainlevel_code LIKE 'SECONDARY%', metres, NULL)), 1) AS nearest_secondary_m,
-    COUNTIF(mainlevel_code LIKE 'SECONDARY%' AND metres <= 2000)      AS secondary_within_2km
+    ROUND(MIN(IF(is_secondary, metres, NULL)), 1)      AS nearest_secondary_m,
+    COUNTIF(is_secondary AND metres <= 2000)            AS secondary_within_2km
   FROM school_pairs
   GROUP BY address
 )
