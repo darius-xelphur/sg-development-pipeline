@@ -7,11 +7,15 @@ with coordinates at load time.
 
 The `opened` date is carried through so downstream analysis can avoid crediting
 a station with affecting prices before it existed.
+
+Every seed row must geocode to a result named exactly '<NAME> MRT STATION'.
+Anything less fails the run rather than truncating the table with a station
+silently missing or misplaced.
 """
 
 import sys
+import re
 import time
-import requests
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
@@ -19,51 +23,36 @@ from zoneinfo import ZoneInfo
 from google.cloud import bigquery
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config import get_client, PROJECT_ID, ONEMAP_EMAIL, ONEMAP_PASSWORD
+from config import get_client, PROJECT_ID
+from ingestion.onemap.client import get_token, search
 
 ROOT       = Path(__file__).resolve().parents[2]
 SEED       = ROOT / "seeds" / "mrt_stations_north.csv"
-TOKEN_URL  = "https://www.onemap.gov.sg/api/auth/post/getToken"
-SEARCH_URL = "https://www.onemap.gov.sg/api/common/elastic/search"
 TARGET     = f"{PROJECT_ID}.raw.mrt_stations"
 
 client = get_client()
 
 
-def get_token():
-    r = requests.post(
-        TOKEN_URL,
-        headers={"Content-Type": "application/json"},
-        json={"email": ONEMAP_EMAIL, "password": ONEMAP_PASSWORD},
-        timeout=30,
-    )
-    if r.status_code in (401, 404):
-        raise RuntimeError(f"OneMap auth failed ({r.status_code}): {r.text}")
-    r.raise_for_status()
-    return r.json()["access_token"]
-
-
 def geocode_station(name, token):
-    """Search '<name> MRT STATION' and take the top hit."""
-    r = requests.get(
-        SEARCH_URL,
-        params={"searchVal": f"{name} MRT STATION", "returnGeom": "Y",
-                "getAddrDetails": "Y", "pageNum": 1},
-        headers={"Authorization": token},
-        timeout=30,
-    )
-    r.raise_for_status()
-    payload = r.json()
+    """
+    Search '<name> MRT STATION' and take the first hit that is that station.
 
-    if payload.get("found", 0) == 0:
-        return None
+    Fuzzy search ranks exits, bus interchanges and similarly named stations
+    (Woodlands vs Woodlands South) alongside the real one, so the top hit
+    alone can't be trusted. Accept 'WOODLANDS MRT STATION' optionally
+    followed by a code suffix such as ' (NS9 / TE2)'.
+    """
+    wanted = re.compile(rf"^{re.escape(name.upper())} MRT STATION( \(.*\))?$")
+    _, results = search(f"{name} MRT STATION", token)
 
-    top = payload["results"][0]
-    return {
-        "latitude":    float(top["LATITUDE"]),
-        "longitude":   float(top["LONGITUDE"]),
-        "onemap_name": top.get("SEARCHVAL"),
-    }
+    for hit in results:
+        if wanted.match(hit.get("SEARCHVAL", "")):
+            return {
+                "latitude":    float(hit["LATITUDE"]),
+                "longitude":   float(hit["LONGITUDE"]),
+                "onemap_name": hit["SEARCHVAL"],
+            }
+    return None
 
 
 if __name__ == "__main__":
@@ -77,11 +66,12 @@ if __name__ == "__main__":
     token = get_token()
     print("Geocoding...")
 
-    rows = []
+    rows, missing = [], []
     for r in df.itertuples():
         result = geocode_station(r.station_name, token)
         if result is None:
-            print(f"  NOT FOUND: {r.station_name}")
+            print(f"  NO MATCH: {r.station_code} {r.station_name}")
+            missing.append(r.station_code)
             continue
 
         rows.append({
@@ -94,6 +84,10 @@ if __name__ == "__main__":
         })
         print(f"  {r.station_code} {r.station_name} -> {result['onemap_name']}")
         time.sleep(0.2)
+
+    if missing:
+        raise SystemExit(f"{len(missing)} seed station(s) not matched in OneMap: "
+                         f"{', '.join(missing)} — {TARGET} left unchanged")
 
     out = pd.DataFrame(rows)
     job_config = bigquery.LoadJobConfig(
