@@ -37,6 +37,13 @@ jobs:
           LTA_ACCOUNT_KEY: ${{ secrets.LTA_ACCOUNT_KEY }}
         run: python ingestion/lta/extract_bus_stops.py
 
+      - name: Ingest MRT stations
+        env:
+          GCP_PROJECT_ID: sg-development-analytics
+          ONEMAP_EMAIL: ${{ secrets.ONEMAP_EMAIL }}
+          ONEMAP_PASSWORD: ${{ secrets.ONEMAP_PASSWORD }}
+        run: python ingestion/mrt/extract_stations.py
+
       - name: Run staging transformation
         env:
           GCP_PROJECT_ID: sg-development-analytics
@@ -53,6 +60,7 @@ jobs:
         env:
           GCP_PROJECT_ID: sg-development-analytics
         run: |
+          python transformations/run_transformation.py mart/mart_mrt_stations.sql
           python transformations/run_transformation.py mart/mart_woodlands_bus_accessibility.sql
           python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
 
