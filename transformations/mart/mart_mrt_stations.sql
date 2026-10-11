@@ -1,11 +1,16 @@
 -- transformations/mart/mart_mrt_stations.sql
--- Purpose: One row per PHYSICAL station, collapsing interchanges
+-- Purpose: One row per PHYSICAL station per mode (MRT/LRT), collapsing
+--          interchanges
 -- Source:  raw.mrt_stations (one row per line-station code)
 -- Target:  mart.mrt_stations
 --
 -- Woodlands NS9 and TE2 are the same physical station served by two lines.
 -- For distance purposes that is one point; for connectivity it is better
 -- than a single-line station, so line_count is kept as a quality measure.
+--
+-- MRT and LRT are grouped separately even where they share a name (Sengkang
+-- NE16 / STC): an LRT feeder does not make a station an MRT interchange, and
+-- downstream MRT and LRT access are measured separately.
 --
 -- opened = earliest line, i.e. when the station first became accessible.
 -- The later TEL date is retained separately since 2020 changed the station's
@@ -15,6 +20,7 @@ CREATE OR REPLACE TABLE `${project}.mart.mrt_stations` AS
 
 SELECT
   station_name,
+  mode,
   ROUND(AVG(latitude), 6)                       AS latitude,
   ROUND(AVG(longitude), 6)                      AS longitude,
 
@@ -29,4 +35,4 @@ SELECT
   CURRENT_DATETIME('Asia/Singapore')            AS _mart_built_at
 
 FROM `${project}.raw.mrt_stations`
-GROUP BY station_name;
+GROUP BY station_name, mode;

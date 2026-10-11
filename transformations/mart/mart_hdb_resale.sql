@@ -15,7 +15,8 @@
 -- first day of the sale's month, and is an interchange only if two or more of
 -- its lines had. So a 2018 sale sees no Thomson-East Coast Line station, and
 -- an NSL/TEL interchange counts as single-line for it. Bus stops and schools are taken as
--- static from the accessibility mart.
+-- static from the accessibility mart. MRT and LRT are measured separately:
+-- nearest_mrt_* never points at an LRT stop.
 --
 -- region follows URA's five planning regions. The ELSE branch is Central:
 -- Bishan, Bukit Merah, Bukit Timah, Central Area, Geylang, Kallang/Whampoa,
@@ -42,17 +43,18 @@ address_months AS (
 ),
 
 stations AS (
-  SELECT station_name, ST_GEOGPOINT(longitude, latitude) AS geo
+  SELECT station_name, mode, ST_GEOGPOINT(longitude, latitude) AS geo
   FROM `${project}.mart.mrt_stations`
 ),
 
 -- One row per (address, month, station) open at that month; lines_open counts
 -- the station's lines that had opened, for point-in-time interchange status.
-mrt_pairs AS (
+rail_pairs AS (
   SELECT
     am.address,
     am.transaction_month,
     st.station_name,
+    st.mode,
     ANY_VALUE(ST_DISTANCE(am.geo, st.geo)) AS metres,
     COUNT(*)                               AS lines_open
   FROM address_months am
@@ -60,19 +62,27 @@ mrt_pairs AS (
     ON ST_DWITHIN(am.geo, st.geo, 3000)
   JOIN `${project}.raw.mrt_stations` l
     ON l.station_name = st.station_name
+   AND l.mode = st.mode
    AND l.opened <= am.transaction_month
-  GROUP BY am.address, am.transaction_month, st.station_name
+  GROUP BY am.address, am.transaction_month, st.station_name, st.mode
 ),
 
-mrt_asof AS (
+rail_asof AS (
   SELECT
     address,
     transaction_month,
-    ROUND(MIN(metres), 1)                                         AS nearest_mrt_m,
-    ARRAY_AGG(station_name ORDER BY metres LIMIT 1)[OFFSET(0)]    AS nearest_mrt_name,
-    ARRAY_AGG(lines_open > 1 ORDER BY metres LIMIT 1)[OFFSET(0)]  AS nearest_mrt_is_interchange,
-    COUNTIF(metres <= 800)                                        AS mrt_within_800m
-  FROM mrt_pairs
+
+    ROUND(MIN(IF(mode = 'MRT', metres, NULL)), 1)        AS nearest_mrt_m,
+    ARRAY_AGG(IF(mode = 'MRT', station_name, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]   AS nearest_mrt_name,
+    ARRAY_AGG(IF(mode = 'MRT', lines_open > 1, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]   AS nearest_mrt_is_interchange,
+    COUNTIF(mode = 'MRT' AND metres <= 800)              AS mrt_within_800m,
+
+    ROUND(MIN(IF(mode = 'LRT', metres, NULL)), 1)        AS nearest_lrt_m,
+    ARRAY_AGG(IF(mode = 'LRT', station_name, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]   AS nearest_lrt_name
+  FROM rail_pairs
   GROUP BY address, transaction_month
 )
 
@@ -120,11 +130,13 @@ SELECT
   b.stops_within_400m,
   b.stops_within_800m,
 
-  -- MRT accessibility, as of the sale month
+  -- MRT and LRT accessibility, as of the sale month
   m.nearest_mrt_m,
   m.nearest_mrt_name,
   m.nearest_mrt_is_interchange,
   m.mrt_within_800m,
+  m.nearest_lrt_m,
+  m.nearest_lrt_name,
 
   -- School accessibility (MOE)
   b.nearest_primary_m,
@@ -139,6 +151,6 @@ SELECT
 FROM txns s
 LEFT JOIN `${project}.mart.sg_accessibility` b
   ON s.address = b.address
-LEFT JOIN mrt_asof m
+LEFT JOIN rail_asof m
   ON s.address = m.address
  AND s.transaction_month = m.transaction_month;

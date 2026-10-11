@@ -45,7 +45,7 @@ stops AS (
 
 stations AS (
   SELECT
-    station_name, station_codes, is_interchange,
+    station_name, mode, station_codes, is_interchange,
     ST_GEOGPOINT(longitude, latitude) AS geo
   FROM `${project}.mart.mrt_stations`
 ),
@@ -68,10 +68,11 @@ bus_pairs AS (
 ),
 
 -- Wider radius: people walk further to a train than to a bus.
-mrt_pairs AS (
+rail_pairs AS (
   SELECT
     a.address,
     st.station_name,
+    st.mode,
     st.is_interchange,
     ST_DISTANCE(a.geo, st.geo) AS metres
   FROM addresses a
@@ -102,15 +103,22 @@ bus_agg AS (
   GROUP BY address
 ),
 
-mrt_agg AS (
+rail_agg AS (
   SELECT
     address,
-    ROUND(MIN(metres), 1) AS nearest_mrt_m,
-    ARRAY_AGG(station_name ORDER BY metres LIMIT 1)[OFFSET(0)] AS nearest_mrt_name,
-    ARRAY_AGG(is_interchange ORDER BY metres LIMIT 1)[OFFSET(0)] AS nearest_mrt_is_interchange,
-    COUNTIF(metres <= 800)  AS mrt_within_800m,
-    COUNTIF(metres <= 1500) AS mrt_within_1500m
-  FROM mrt_pairs
+
+    ROUND(MIN(IF(mode = 'MRT', metres, NULL)), 1) AS nearest_mrt_m,
+    ARRAY_AGG(IF(mode = 'MRT', station_name, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]   AS nearest_mrt_name,
+    ARRAY_AGG(IF(mode = 'MRT', is_interchange, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]   AS nearest_mrt_is_interchange,
+    COUNTIF(mode = 'MRT' AND metres <= 800)              AS mrt_within_800m,
+    COUNTIF(mode = 'MRT' AND metres <= 1500)             AS mrt_within_1500m,
+
+    ROUND(MIN(IF(mode = 'LRT', metres, NULL)), 1) AS nearest_lrt_m,
+    ARRAY_AGG(IF(mode = 'LRT', station_name, NULL) IGNORE NULLS
+              ORDER BY metres LIMIT 1)[SAFE_OFFSET(0)]   AS nearest_lrt_name
+  FROM rail_pairs
   GROUP BY address
 ),
 
@@ -144,6 +152,8 @@ SELECT
   m.nearest_mrt_is_interchange,
   m.mrt_within_800m,
   m.mrt_within_1500m,
+  m.nearest_lrt_m,
+  m.nearest_lrt_name,
 
   sc.nearest_primary_m,
   sc.nearest_primary_name,
@@ -156,5 +166,5 @@ SELECT
 
 FROM addresses a
 LEFT JOIN bus_agg    b  ON a.address = b.address
-LEFT JOIN mrt_agg    m  ON a.address = m.address
+LEFT JOIN rail_agg   m  ON a.address = m.address
 LEFT JOIN school_agg sc ON a.address = sc.address;
