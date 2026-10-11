@@ -8,7 +8,10 @@ with coordinates at load time.
 The `opened` date is carried through so downstream analysis can avoid crediting
 a station with affecting prices before it existed.
 
-Every seed row must geocode to a result named exactly '<NAME> MRT STATION'.
+Stations not yet open — `opened` is TBA or in the future — are skipped, so
+planned stations can sit in the seed and are picked up once dated.
+
+Every open seed row must geocode to a result named exactly '<NAME> MRT STATION'.
 Anything less fails the run rather than truncating the table with a station
 silently missing or misplaced.
 """
@@ -33,26 +36,29 @@ TARGET     = f"{PROJECT_ID}.raw.mrt_stations"
 client = get_client()
 
 
-def geocode_station(name, token):
+def match_station(results, name, code):
     """
-    Search '<name> MRT STATION' and take the first hit that is that station.
+    Pick this line's platform from a '<name> MRT STATION' search.
 
     Fuzzy search ranks exits, bus interchanges and similarly named stations
     (e.g. '<NAME> SOUTH') alongside the real one, so the top hit alone can't
     be trusted. Accept '<NAME> MRT STATION' optionally followed by a code
-    suffix such as ' (NS9 / TE2)'.
+    suffix such as ' (NS9 / TE2)'. At interchanges OneMap may list each
+    line's platform separately, so prefer the hit carrying this row's code.
     """
-    wanted = re.compile(rf"^{re.escape(name.upper())} MRT STATION( \(.*\))?$")
-    _, results = search(f"{name} MRT STATION", token)
+    wanted   = re.compile(rf"^{re.escape(name.upper())} MRT STATION(?: \((.*)\))?$")
+    fallback = None
 
     for hit in results:
-        if wanted.match(hit.get("SEARCHVAL", "")):
-            return {
-                "latitude":    float(hit["LATITUDE"]),
-                "longitude":   float(hit["LONGITUDE"]),
-                "onemap_name": hit["SEARCHVAL"],
-            }
-    return None
+        m = wanted.match(hit.get("SEARCHVAL", ""))
+        if not m:
+            continue
+        codes = (m.group(1) or "").replace(" ", "").split("/")
+        if code in codes:
+            return hit
+        fallback = fallback or hit
+
+    return fallback
 
 
 if __name__ == "__main__":
@@ -61,15 +67,27 @@ if __name__ == "__main__":
     print("=" * 55)
 
     df = pd.read_csv(SEED)
-    print(f"Seed contains {len(df)} stations")
+    print(f"Seed contains {len(df)} station-line rows")
+
+    today   = datetime.now(ZoneInfo("Asia/Singapore")).date()
+    opened  = pd.to_datetime(df["opened"], errors="coerce").dt.date
+    is_open = opened.notna() & (opened <= today)
+    for r in df[~is_open].itertuples():
+        print(f"  Skipping {r.station_code} {r.station_name}: not yet open ({r.opened})")
+    df = df[is_open].assign(opened=opened[is_open])
 
     token = get_token()
     print("Geocoding...")
 
-    rows, missing = [], []
+    # One search per station name; interchange lines pick from the same results
+    searches, rows, missing = {}, [], []
     for r in df.itertuples():
-        result = geocode_station(r.station_name, token)
-        if result is None:
+        if r.station_name not in searches:
+            _, searches[r.station_name] = search(f"{r.station_name} MRT STATION", token)
+            time.sleep(0.2)
+
+        hit = match_station(searches[r.station_name], r.station_name, r.station_code)
+        if hit is None:
             print(f"  NO MATCH: {r.station_code} {r.station_name}")
             missing.append(r.station_code)
             continue
@@ -78,12 +96,13 @@ if __name__ == "__main__":
             "station_name": r.station_name,
             "line":         r.line,
             "station_code": r.station_code,
-            "opened":       pd.to_datetime(r.opened).date(),
-            **result,
+            "opened":       r.opened,
+            "latitude":     float(hit["LATITUDE"]),
+            "longitude":    float(hit["LONGITUDE"]),
+            "onemap_name":  hit["SEARCHVAL"],
             "_loaded_at":   datetime.now(ZoneInfo("Asia/Singapore")).replace(tzinfo=None),
         })
-        print(f"  {r.station_code} {r.station_name} -> {result['onemap_name']}")
-        time.sleep(0.2)
+        print(f"  {r.station_code} {r.station_name} -> {hit['SEARCHVAL']}")
 
     if missing:
         raise SystemExit(f"{len(missing)} seed station(s) not matched in OneMap: "
