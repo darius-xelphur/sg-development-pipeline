@@ -1,19 +1,22 @@
 """
-Load the MRT station seed and geocode each station via OneMap.
+Load the MRT/LRT station seed and geocode each station via OneMap.
 
-Seed-based, not API-based: there is no clean public endpoint for MRT station
+Seed-based, not API-based: there is no clean public endpoint for rail station
 coordinates, so the station list is version-controlled in seeds/ and enriched
 with coordinates at load time.
 
 The `opened` date is carried through so downstream analysis can avoid crediting
 a station with affecting prices before it existed.
 
-Stations not yet open — `opened` is TBA or in the future — are skipped, so
-planned stations can sit in the seed and are picked up once dated.
+Each row gets a `mode` — 'LRT' if its line name ends in LRT, else 'MRT' — so
+the marts can keep MRT and LRT access apart.
 
-Every open seed row must geocode to a result named exactly '<NAME> MRT STATION'.
-Anything less fails the run rather than truncating the table with a station
-silently missing or misplaced.
+Stations not in service — `opened` is TBA or in the future, or `closed` is
+set — are skipped, so planned and retired stations can sit in the seed.
+
+Every remaining row must geocode to a result named exactly '<NAME> MRT STATION'
+(or '<NAME> LRT STATION' for LRT rows). Anything less fails the run rather
+than truncating the table with a station silently missing or misplaced.
 """
 
 import sys
@@ -36,17 +39,17 @@ TARGET     = f"{PROJECT_ID}.raw.mrt_stations"
 client = get_client()
 
 
-def match_station(results, name, code):
+def match_station(results, name, code, suffix):
     """
-    Pick this line's platform from a '<name> MRT STATION' search.
+    Pick this line's platform from a '<name> <suffix>' search.
 
     Fuzzy search ranks exits, bus interchanges and similarly named stations
     (e.g. '<NAME> SOUTH') alongside the real one, so the top hit alone can't
-    be trusted. Accept '<NAME> MRT STATION' optionally followed by a code
+    be trusted. Accept '<NAME> <suffix>' optionally followed by a code
     suffix such as ' (NS9 / TE2)'. At interchanges OneMap may list each
     line's platform separately, so prefer the hit carrying this row's code.
     """
-    wanted   = re.compile(rf"^{re.escape(name.upper())} MRT STATION(?: \((.*)\))?$")
+    wanted   = re.compile(rf"^{re.escape(name.upper())} {suffix}(?: \((.*)\))?$")
     fallback = None
 
     for hit in results:
@@ -61,9 +64,29 @@ def match_station(results, name, code):
     return fallback
 
 
+def locate(r, token, searches):
+    """
+    MRT rows match '<NAME> MRT STATION'. LRT rows try '<NAME> LRT STATION',
+    then the same-named MRT station: OneMap may list a shared station only
+    once (e.g. 'SENGKANG MRT STATION (NE16 / STC)'), and every shared-name
+    LRT stop sits in or beside its MRT station.
+    """
+    suffixes = ["LRT STATION", "MRT STATION"] if r.mode == "LRT" else ["MRT STATION"]
+
+    for suffix in suffixes:
+        key = (r.station_name, suffix)
+        if key not in searches:
+            _, searches[key] = search(f"{r.station_name} {suffix}", token)
+            time.sleep(0.2)
+        hit = match_station(searches[key], r.station_name, r.station_code, suffix)
+        if hit is not None:
+            return hit
+    return None
+
+
 if __name__ == "__main__":
     print("=" * 55)
-    print("MRT Stations — Seed Ingestion")
+    print("MRT/LRT Stations — Seed Ingestion")
     print("=" * 55)
 
     df = pd.read_csv(SEED)
@@ -71,22 +94,23 @@ if __name__ == "__main__":
 
     today   = datetime.now(ZoneInfo("Asia/Singapore")).date()
     opened  = pd.to_datetime(df["opened"], errors="coerce").dt.date
-    is_open = opened.notna() & (opened <= today)
+    closed  = df["closed"].notna()
+    is_open = opened.notna() & (opened <= today) & ~closed
     for r in df[~is_open].itertuples():
-        print(f"  Skipping {r.station_code} {r.station_name}: not yet open ({r.opened})")
-    df = df[is_open].assign(opened=opened[is_open])
+        why = f"closed {r.closed}" if pd.notna(r.closed) else f"not yet open ({r.opened})"
+        print(f"  Skipping {r.station_code} {r.station_name}: {why}")
+    df = df[is_open].assign(
+        opened=opened[is_open],
+        mode=lambda d: d["line"].str.endswith("LRT").map({True: "LRT", False: "MRT"}),
+    )
 
     token = get_token()
     print("Geocoding...")
 
-    # One search per station name; interchange lines pick from the same results
+    # One search per (name, suffix); interchange lines pick from the same results
     searches, rows, missing = {}, [], []
     for r in df.itertuples():
-        if r.station_name not in searches:
-            _, searches[r.station_name] = search(f"{r.station_name} MRT STATION", token)
-            time.sleep(0.2)
-
-        hit = match_station(searches[r.station_name], r.station_name, r.station_code)
+        hit = locate(r, token, searches)
         if hit is None:
             print(f"  NO MATCH: {r.station_code} {r.station_name}")
             missing.append(r.station_code)
@@ -95,6 +119,7 @@ if __name__ == "__main__":
         rows.append({
             "station_name": r.station_name,
             "line":         r.line,
+            "mode":         r.mode,
             "station_code": r.station_code,
             "opened":       r.opened,
             "latitude":     float(hit["LATITUDE"]),
