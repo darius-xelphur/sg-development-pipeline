@@ -10,6 +10,9 @@ Two tables, two load patterns:
 
 The source has postal codes but no coordinates. Singapore's 6-digit postal
 codes identify individual buildings, so they geocode reliably.
+
+Only definitive answers (OK / NOT_FOUND) are cached. A lookup that errors after
+retries is skipped, so it is attempted again on the next run.
 """
 
 import sys
@@ -22,12 +25,11 @@ from zoneinfo import ZoneInfo
 from google.cloud import bigquery
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from config import get_client, PROJECT_ID, ONEMAP_EMAIL, ONEMAP_PASSWORD
+from config import get_client, PROJECT_ID
+from ingestion.onemap.client import get_token, search
 
 DATASET_ID  = "d_688b934f82c1059ed0a6993d2a829089"
 SEARCH_API  = "https://data.gov.sg/api/action/datastore_search"
-TOKEN_URL   = "https://www.onemap.gov.sg/api/auth/post/getToken"
-ONEMAP_URL  = "https://www.onemap.gov.sg/api/common/elastic/search"
 
 SCHOOLS     = f"{PROJECT_ID}.raw.schools"
 GEOCODES    = f"{PROJECT_ID}.raw.school_geocodes"
@@ -71,19 +73,6 @@ def load_schools(df):
 
 
 # ── Geocoding ─────────────────────────────────────────────────────────────────
-def get_token():
-    if not ONEMAP_EMAIL or not ONEMAP_PASSWORD:
-        raise RuntimeError("OneMap credentials missing")
-    r = requests.post(TOKEN_URL,
-                      headers={"Content-Type": "application/json"},
-                      json={"email": ONEMAP_EMAIL, "password": ONEMAP_PASSWORD},
-                      timeout=30)
-    if r.status_code in (400, 401, 404):
-        raise RuntimeError(f"OneMap auth failed ({r.status_code}): {r.text}")
-    r.raise_for_status()
-    return r.json()["access_token"]
-
-
 def ensure_geocode_table():
     client.query(f"""
         CREATE TABLE IF NOT EXISTS `{GEOCODES}` (
@@ -101,7 +90,9 @@ def postcodes_to_geocode():
     sql = f"""
         SELECT DISTINCT s.postal_code
         FROM `{SCHOOLS}` s
-        LEFT JOIN `{GEOCODES}` g ON s.postal_code = g.postal_code
+        LEFT JOIN `{GEOCODES}` g
+          ON s.postal_code = g.postal_code
+         AND g.status IN ('OK', 'NOT_FOUND')  -- legacy 'ERROR' rows get retried
         WHERE g.postal_code IS NULL
           AND s.postal_code IS NOT NULL
     """
@@ -111,17 +102,11 @@ def postcodes_to_geocode():
 
 
 def geocode_postcode(postal_code, token):
-    r = requests.get(ONEMAP_URL,
-                     params={"searchVal": postal_code, "returnGeom": "Y",
-                             "getAddrDetails": "Y", "pageNum": 1},
-                     headers={"Authorization": token}, timeout=30)
-    r.raise_for_status()
-    payload = r.json()
-
-    if payload.get("found", 0) == 0:
+    _, results = search(postal_code, token)
+    if not results:
         return {"status": "NOT_FOUND"}
 
-    top = payload["results"][0]
+    top = results[0]
     return {
         "status":      "OK",
         "latitude":    float(top["LATITUDE"]),
@@ -156,8 +141,10 @@ if __name__ == "__main__":
         try:
             result = geocode_postcode(r.postal_code, token)
         except Exception as e:
-            print(f"  {r.postal_code} — error: {e}")
-            result = {"status": "ERROR"}
+            # Not cached: a transient failure must not become a permanent miss
+            print(f"  {r.postal_code} — gave up, will retry next run: {e}")
+            failures += 1
+            continue
 
         if result["status"] != "OK":
             failures += 1
@@ -175,11 +162,11 @@ if __name__ == "__main__":
             print(f"  [{i}/{len(pending)}] processed")
         time.sleep(0.2)
 
-    out = pd.DataFrame(rows)
-    client.load_table_from_dataframe(
-        out, GEOCODES,
-        job_config=bigquery.LoadJobConfig(write_disposition="WRITE_APPEND")
-    ).result()
+    if rows:
+        client.load_table_from_dataframe(
+            pd.DataFrame(rows), GEOCODES,
+            job_config=bigquery.LoadJobConfig(write_disposition="WRITE_APPEND")
+        ).result()
 
-    print(f"\nGeocoded {len(rows) - failures} / {len(pending)} "
-          f"({failures} failed)")
+    print(f"\nGeocoded {len(pending) - failures} / {len(pending)} "
+          f"({failures} not found or errored)")
