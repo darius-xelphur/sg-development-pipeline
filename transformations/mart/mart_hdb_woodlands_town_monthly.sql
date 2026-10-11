@@ -1,4 +1,3 @@
-cat > transformations/mart/mart_hdb_woodlands_town_monthly.sql << 'EOF'
 -- transformations/mart/mart_hdb_woodlands_town_monthly.sql
 -- Purpose: Woodlands HDB resale fact table, enriched with OneMap coordinates
 --          and LTA bus accessibility
@@ -57,6 +56,3 @@ LEFT JOIN `sg-development-analytics.mart.woodlands_bus_accessibility` b
 WHERE
   s.valid = 1
   AND s.town = 'WOODLANDS';
-EOF
-
-python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
