@@ -41,12 +41,12 @@ jobs:
           GCP_PROJECT_ID: sg-development-analytics
         run: python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
 
-      - name: Clean up credentials
-        if: always()
-        run: rm -f gcp-key.json
-
       - name: Ingest LTA bus stops
         env:
           GCP_PROJECT_ID: sg-development-analytics
           LTA_ACCOUNT_KEY: ${{ secrets.LTA_ACCOUNT_KEY }}
         run: python ingestion/lta/extract_bus_stops.py
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -f gcp-key.json
