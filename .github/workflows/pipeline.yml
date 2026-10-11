@@ -39,7 +39,9 @@ jobs:
       - name: Run mart transformation
         env:
           GCP_PROJECT_ID: sg-development-analytics
-        run: python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
+        run: |
+          python transformations/run_transformation.py mart/mart_woodlands_bus_accessibility.sql
+          python transformations/run_transformation.py mart/mart_hdb_woodlands_town_monthly.sql
 
       - name: Ingest LTA bus stops
         env:
